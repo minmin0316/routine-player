@@ -281,20 +281,22 @@ document.addEventListener("visibilitychange",()=>{if(document.visibilityState===
 
 
 /* ===== 유튜브 구간 반복 ===== */
-let YTP=null,ytReady=false,clip=null;
+let YTP=null,ytReady=false,clip=null,curVid=null;
 (function(){const t=document.createElement("script");t.src="https://www.youtube.com/iframe_api";document.head.appendChild(t)})();
 function onYouTubeIframeAPIReady(){ytReady=true;if(clip)makePlayer()}
 function makePlayer(){
-  YTP=new YT.Player("yt",{videoId:clip.id,playerVars:{start:clip.s,end:clip.e,mute:1,playsinline:1,rel:0,controls:0,disablekb:1,iv_load_policy:3},
+  curVid=clip.id;
+  YTP=new YT.Player("yt",{host:"https://www.youtube-nocookie.com",videoId:clip.id,playerVars:{start:clip.s,mute:1,playsinline:1,rel:0,controls:0,disablekb:1,iv_load_policy:3},
     events:{onReady:e=>{e.target.mute();e.target.playVideo()},onStateChange:e=>{if(e.data===YT.PlayerState.ENDED){e.target.seekTo(clip.s,true);e.target.playVideo()}}}});
 }
 function playClip(id,s,e){
   if(clip&&clip.id===id&&clip.s===s)return;clip={id,s,e};
   if(!ytReady)return;
   if(!YTP){makePlayer();return}
-  try{YTP.loadVideoById({videoId:id,startSeconds:s,endSeconds:e});YTP.mute()}catch(err){}
+  try{if(curVid===id){YTP.seekTo(s,true);YTP.playVideo()}else{curVid=id;YTP.loadVideoById({videoId:id,startSeconds:s});YTP.mute()}}catch(err){}
 }
-setInterval(()=>{try{if(YTP&&clip&&YTP.getCurrentTime&&YTP.getCurrentTime()>=clip.e-0.2){YTP.seekTo(clip.s,true)}}catch(e){}},400);
+function inClip(){try{const t=YTP.getCurrentTime();return YTP.getPlayerState()===1&&t>=clip.s-1&&t<=clip.e+1}catch(e){return false}}
+setInterval(()=>{try{if(YTP&&clip&&YTP.getCurrentTime&&!(P&&P.hold)){const t=YTP.getCurrentTime();if(t>=clip.e-0.2||t<clip.s-2)YTP.seekTo(clip.s,true)}}catch(e){}},400);
 function pauseClip(){try{YTP&&YTP.pauseVideo()}catch(e){}}
 function resumeClip(){try{YTP&&YTP.playVideo()}catch(e){}}
 /* ===== 플레이어 엔진 ===== */
@@ -314,7 +316,7 @@ $("startBtn").onclick=()=>{
   try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();actx.resume()}catch(e){}
   say("시작할게요",true);lockOn();
   const {steps,ph}=buildPhases(cur);
-  P={r:cur,steps,ph,i:0,el:0,last:performance.now(),running:true,spoken:{},start:Date.now()};
+  P={r:cur,steps,ph,i:0,el:0,last:performance.now(),running:true,spoken:{},start:Date.now(),hold:true,holdT:performance.now()};
   $("prog").innerHTML=steps.map(()=>"<i></i>").join("");
   show("playerSec");enterPhase();loop();
 };
@@ -333,7 +335,11 @@ function enterPhase(){
 function loop(){
   if(!P)return;
   const now=performance.now(),dt=(now-P.last)/1000;P.last=now;
-  if(P.running){
+  if(P.hold){
+    if((YTP&&clip&&inClip())||now-P.holdT>40000)P.hold=false;
+    else{$("pPhase").textContent="영상 준비 중";$("pPhase").className="phase prep";$("pBig").textContent="…";$("pLbl").textContent="광고가 끝나면 시작돼요 (탭하면 바로 시작)";}
+  }
+  else if(P.running){
     P.el+=dt;const p=P.ph[P.i],st=P.steps[p.si],left=p.dur-P.el;
     if(p.kind==="work"&&st.mode==="reps"){
       const rep=Math.min(st.reps,Math.floor(P.el/S.tempo)+1);
@@ -390,7 +396,7 @@ function renderPlayer(full){
   const cur=$("prog").children[p.si];if(cur){const idx=P.ph.filter(x=>x.si===p.si);const done=idx.indexOf(p);cur.style.setProperty("--p",((done+P.el/p.dur)/idx.length*100)+"%")}
   $("bPlay").textContent=P.running?"❚❚":"▶";
 }
-$("bPlay").onclick=()=>{if(!P)return;P.running=!P.running;P.last=performance.now();if(P.running){lockOn();resumeClip()}else pauseClip();renderPlayer(false)};
+$("bPlay").onclick=()=>{if(!P)return;if(P.hold){P.hold=false;P.last=performance.now();return}P.running=!P.running;P.last=performance.now();if(P.running){lockOn();resumeClip()}else pauseClip();renderPlayer(false)};
 $("bNext").onclick=()=>P&&next(false);
 $("bPrev").onclick=()=>P&&prev();
 $("pVid").addEventListener("click",()=>{if(P&&P.running){P.running=false;pauseClip();renderPlayer(false)}});
