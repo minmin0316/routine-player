@@ -183,7 +183,7 @@ h2{font-size:20px;font-weight:700;letter-spacing:-.3px}
 /* ===== 루틴 데이터: 새 루틴은 여기에만 추가 ===== */
 const ROUTINES = [
   {
-    id:"face", type:"run", emoji:"🧖", title:"얼굴 라인 루틴",
+    id:"face", cat:"얼굴 관리", type:"run", emoji:"🧖", title:"얼굴 라인 루틴",
     sub:"턱선 · T존 · 얼굴 폭 · 광대",
     video:"dsiS3V03J5U",
     intro:"손을 씻고, 손가락 마디로 진행해요. 압력은 아픔 0~10 중 6~7 정도.",
@@ -216,7 +216,7 @@ const ROUTINES = [
     ]
   },
   {
-    id:"body", type:"check", emoji:"💪", title:"맨몸 근력",
+    id:"body", cat:"운동 루틴", type:"check", emoji:"💪", title:"맨몸 근력",
     sub:"했으면 체크 · 매일 자정에 초기화",
     steps:[
       {name:"푸쉬업", amt:"60개"},
@@ -227,7 +227,7 @@ const ROUTINES = [
     ]
   },
   {
-    id:"hair", type:"guide", emoji:"💇", title:"머리 손질",
+    id:"hair", cat:"가이드", type:"guide", emoji:"💇", title:"머리 손질",
     sub:"누르면 단계별 설명이 펼쳐져요",
     steps:[
       {name:"내용 준비 중", body:"머리 손질 방법(글, 사진 설명, 또는 영상 링크)을 Claude에게 주면 이 자리에 단계별로 채워져요."}
@@ -262,12 +262,16 @@ function renderHome(){
   let streak=0;for(let i=h.includes(today)?0:1;i<400;i++){if(h.includes(new Date(Date.now()-i*864e5).toDateString()))streak++;else break}
   $("streak").textContent=h.includes(today)?`오늘 완료 ✓ · ${streak}일 연속`:(streak?`${streak}일 연속 중 · 오늘도 한 번.`:"오늘도 한 번.");
   $("rlist").innerHTML="";
-  ROUTINES.forEach(r=>{
+  const cats=[...new Set(ROUTINES.map(r=>r.cat||"기타"))];
+  cats.forEach(c=>{
+  const hd=document.createElement("div");hd.className="sec";hd.textContent=c+(c==="운동 루틴"?" · 오늘 할 것 골라서 체크":"");$("rlist").appendChild(hd);
+  ROUTINES.filter(r=>(r.cat||"기타")===c).forEach(r=>{
     const b=document.createElement("button");b.className="card rcard";
     const meta=r.type==="run"?`<span class="tag">따라하기</span><span class="tag g">약 ${fmt(totalSec(r))}</span>`:r.type==="check"?`<span class="tag">체크</span><span class="tag g">오늘 ${chkDone(r)} / ${r.steps.length}</span>`:`<span class="tag g">가이드</span>`;
     b.innerHTML=`<div class="emoji">${r.emoji}</div><div><div class="sname" style="font-size:16px">${r.title}</div><div class="smeta">${r.sub}</div><div style="margin-top:6px">${meta}</div></div>`;
     b.onclick=()=>r.type==="run"?openDetail(r):r.type==="check"?openCheck(r):openGuide(r);
     $("rlist").appendChild(b);
+  });
   });
 }
 
