@@ -91,6 +91,27 @@ h2{font-size:20px;font-weight:700;letter-spacing:-.3px}
 .citem.on .sname{color:var(--sub);text-decoration:line-through}
 .amt{margin-left:auto;font-size:14px;font-weight:700;color:var(--acc)}
 .citem.on .amt{color:var(--sub)}
+.cbar{display:flex;gap:8px;margin-bottom:10px}
+.pill{padding:8px 12px;border-radius:99px;background:var(--card);border:1px solid var(--line);font-size:13px;font-weight:500}
+.pill.on{background:var(--acc);color:#fff;border-color:var(--acc)}
+.cinfo{flex:1;min-width:0}
+.cmeta{font-size:12px;color:var(--sub);margin-top:2px}
+.dots{display:flex;gap:5px;flex:none}
+.dots i{width:12px;height:12px;border-radius:50%;border:2px solid var(--line)}
+.dots i.f{background:var(--acc);border-color:var(--acc)}
+.edit{display:flex;align-items:center;gap:6px;flex:none;font-size:13px;color:var(--sub)}
+.edit input{width:54px;padding:6px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:inherit;font-size:15px;text-align:center}
+.chips{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;margin-bottom:4px}
+.chips .pill{white-space:nowrap}
+.ctitle{font-weight:700;font-size:15px}
+.csub{font-size:12px;color:var(--sub);margin:2px 0 8px}
+.chart svg{width:100%;height:auto;display:block}
+.chart .bar{fill:var(--acc)}
+.chart .bar.sel{fill:var(--ink)}
+.chart .grid{stroke:var(--line);stroke-width:1}
+.chart text{fill:var(--sub);font-size:9px;font-family:inherit}
+.tip{position:fixed;z-index:9;background:var(--ink);color:var(--bg);font-size:12px;padding:6px 9px;border-radius:8px;pointer-events:none;transform:translate(-50%,-110%);white-space:nowrap}
+.empty{font-size:13px;color:var(--sub);padding:18px 0;text-align:center}
 /* done */
 .done{text-align:center;padding-top:60px}
 .done .e{font-size:64px}
@@ -143,7 +164,20 @@ h2{font-size:20px;font-weight:700;letter-spacing:-.3px}
 <!-- CHECK -->
 <section id="check" class="hidden">
   <div class="top"><button class="back" data-go="home">‹</button><div><h2 id="cTitle"></h2><p class="sub" id="cMeta"></p></div></div>
+  <div class="cbar"><button class="pill" id="cEdit">✎ 횟수·시간 편집</button><button class="pill" id="cStats">📈 기록 보기</button></div>
   <div class="card" id="cItems"></div>
+  <button class="pill hidden" id="cReset" style="margin:4px auto 0;display:block">기본값으로 되돌리기</button>
+  <p class="note" id="cHint">항목을 누를 때마다 세트가 하나씩 채워져요. 다 채운 뒤 한 번 더 누르면 0으로 돌아가요.</p>
+</section>
+
+<!-- STATS -->
+<section id="stats" class="hidden">
+  <div class="top"><button class="back" id="sBack">‹</button><div><h2>기록</h2><p class="sub" id="sMeta"></p></div></div>
+  <div class="chips" id="sRoutines"></div>
+  <div class="row" style="padding:2px 0 8px"><span class="sub">기간</span><div class="seg" id="sRange"><button data-v="14" class="on">2주</button><button data-v="30">30일</button><button data-v="90">90일</button></div></div>
+  <div class="card"><div class="ctitle">일별 완료율</div><div class="csub">그날 채운 세트 ÷ 전체 세트</div><div class="chart" id="chDone"></div></div>
+  <div id="chItems"></div>
+  <div class="tip hidden" id="tip"></div>
 </section>
 
 <!-- PLAYER -->
@@ -217,13 +251,25 @@ const ROUTINES = [
   },
   {
     id:"body", cat:"운동 루틴", type:"check", emoji:"💪", title:"맨몸 근력",
-    sub:"했으면 체크 · 매일 자정에 초기화",
+    sub:"푸쉬업 · 스쿼트 · 런지 · 슈퍼맨 · 플랭크",
     steps:[
-      {name:"푸쉬업", amt:"60개"},
-      {name:"스쿼트", amt:"60개"},
-      {name:"런지", amt:"60개"},
-      {name:"슈퍼맨", amt:"60개"},
-      {name:"플랭크", amt:"60초"}
+      {name:"푸쉬업", v:60, unit:"개", sets:1},
+      {name:"스쿼트", v:60, unit:"개", sets:1},
+      {name:"런지", v:60, unit:"개", sets:1},
+      {name:"슈퍼맨", v:60, unit:"개", sets:1},
+      {name:"플랭크", v:60, unit:"초", sets:1}
+    ]
+  },
+  {
+    id:"abs1", cat:"운동 루틴", type:"check", emoji:"🔥", title:"복근 루틴 1",
+    sub:"데드버그 · 플랭크 · 사이드 · 코펜하겐 · 크런치 · 레그레이즈",
+    steps:[
+      {name:"데드버그", v:20, unit:"초", sets:3, note:"한 쪽당"},
+      {name:"플랭크", v:60, unit:"초", sets:3},
+      {name:"사이드 플랭크", v:30, unit:"초", sets:3},
+      {name:"코펜하겐 플랭크", v:30, unit:"초", sets:3},
+      {name:"크런치", v:20, unit:"회", sets:5},
+      {name:"레그레이즈", v:20, unit:"회", sets:3}
     ]
   },
   {
@@ -241,7 +287,7 @@ let S={tick:store.get("tick",false),tempo:store.get("tempo",2),prep:store.get("p
 const $=id=>document.getElementById(id);
 const REST=4;
 
-function show(id){["home","detail","guide","check","playerSec","doneSec"].forEach(s=>$(s).classList.toggle("hidden",s!==id));window.scrollTo(0,0)}
+function show(id){["home","detail","guide","check","stats","playerSec","doneSec"].forEach(s=>$(s).classList.toggle("hidden",s!==id));window.scrollTo(0,0)}
 document.querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>{show(b.dataset.go);renderHome()});
 
 function segInit(id,key){const el=$(id);el.querySelectorAll("button").forEach(b=>{b.classList.toggle("on",+b.dataset.v===S[key]);b.onclick=()=>{S[key]=+b.dataset.v;store.set(key,S[key]);el.querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b))}})}
@@ -292,26 +338,91 @@ function openDetail(r){
   draw();show("detail");
 }
 
-/* ===== 체크리스트 ===== */
-function chkKey(r){return "chk_"+r.id+"_"+new Date().toDateString()}
-function chkGet(r){return store.get(chkKey(r),[])}
-function chkDone(r){return chkGet(r).length}
-function markDay(){const h=store.get("hist",[]),d=new Date().toDateString();if(!h.includes(d)){h.push(d);store.set("hist",h.slice(-60))}}
+/* ===== 체크리스트 + 기록 ===== */
+function dkey(d=new Date()){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
+function markDay(){const h=store.get("hist",[]),d=new Date().toDateString();if(!h.includes(d)){h.push(d);store.set("hist",h.slice(-400))}}
+function cfgOf(r){const c=store.get("cfg_"+r.id,{});return r.steps.map(st=>({...st,...(c[st.name]||{})}))}
+function amtTxt(it){return `${it.v}${it.unit}${it.sets>1?` × ${it.sets}세트`:""}${it.note?` · ${it.note}`:""}`}
+function todayLog(r){const L=store.get("log",{});return (L[dkey()]||{})[r.id]||{}}
+function saveToday(r,obj){const L=store.get("log",{}),k=dkey();L[k]=L[k]||{};L[k][r.id]=obj;store.set("log",L)}
+function chkDone(r){const t=todayLog(r);return cfgOf(r).filter(it=>t[it.name]&&t[it.name].d>=it.sets).length}
+let editMode=false,statR=null,statRange=14;
 function openCheck(r){
-  $("cTitle").textContent=r.title;
+  editMode=false;$("cTitle").textContent=r.title;
   const draw=()=>{
-    const on=chkGet(r);
-    $("cMeta").textContent=on.length===r.steps.length?"오늘 다 했어요 ✓":`오늘 ${on.length} / ${r.steps.length}`;
-    $("cItems").innerHTML=r.steps.map((st,i)=>`<button class="citem ${on.includes(i)?"on":""}" data-i="${i}"><span class="box">${on.includes(i)?"✓":""}</span><span class="sname">${st.name}</span><span class="amt">${st.amt||""}</span></button>`).join("");
-    $("cItems").querySelectorAll(".citem").forEach(b=>b.onclick=()=>{
-      const i=+b.dataset.i,cur=chkGet(r),k=cur.indexOf(i);
-      if(k<0){cur.push(i);beep(1175,.07)}else cur.splice(k,1);
-      store.set(chkKey(r),cur);
-      if(cur.length===r.steps.length){markDay();try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();actx.resume()}catch(e){}setTimeout(()=>{beep(784,.12);setTimeout(()=>beep(1047,.12),130);setTimeout(()=>beep(1568,.3),260)},80)}
-      draw();
-    });
+    const items=cfgOf(r),t=todayLog(r),n=chkDone(r);
+    $("cMeta").textContent=n===items.length?"오늘 다 했어요 ✓":`오늘 ${n} / ${items.length}`;
+    $("cEdit").classList.toggle("on",editMode);$("cEdit").textContent=editMode?"✓ 편집 끝":"✎ 횟수·시간 편집";
+    $("cReset").classList.toggle("hidden",!editMode);$("cHint").classList.toggle("hidden",editMode);
+    $("cItems").innerHTML=items.map((it,i)=>{
+      const d=(t[it.name]||{}).d||0,on=d>=it.sets;
+      if(editMode)return `<div class="citem"><div class="cinfo"><div class="sname">${it.name}</div><div class="cmeta">${it.note||""}</div></div><div class="edit"><input type="number" inputmode="numeric" min="1" value="${it.v}" data-i="${i}" data-f="v">${it.unit} ×<input type="number" inputmode="numeric" min="1" value="${it.sets}" data-i="${i}" data-f="sets">세트</div></div>`;
+      const dots=it.sets>1?`<span class="dots">${Array.from({length:it.sets},(_,k)=>`<i class="${k<d?"f":""}"></i>`).join("")}</span>`:"";
+      return `<button class="citem ${on?"on":""}" data-i="${i}"><span class="box">${on?"✓":""}</span><span class="cinfo"><span class="sname">${it.name}</span><div class="cmeta">${amtTxt(it)}</div></span>${dots}</button>`}).join("");
+    if(editMode){
+      $("cItems").querySelectorAll("input").forEach(inp=>inp.onchange=()=>{
+        const it=items[+inp.dataset.i],c=store.get("cfg_"+r.id,{}),val=Math.max(1,Math.round(+inp.value||1));
+        c[it.name]={...(c[it.name]||{}),[inp.dataset.f]:val};store.set("cfg_"+r.id,c);
+        const tl=todayLog(r);if(tl[it.name]){const nv=cfgOf(r)[+inp.dataset.i];tl[it.name].v=nv.v;tl[it.name].s=nv.sets;tl[it.name].d=Math.min(tl[it.name].d,nv.sets);saveToday(r,tl)}
+      });
+    }else{
+      $("cItems").querySelectorAll(".citem").forEach(b=>b.onclick=()=>{
+        const it=items[+b.dataset.i],tl=todayLog(r),cur=(tl[it.name]||{}).d||0,nd=cur>=it.sets?0:cur+1;
+        tl[it.name]={d:nd,v:it.v,s:it.sets,u:it.unit};saveToday(r,tl);
+        if(nd>0)beep(nd===it.sets?1319:1047,.07);
+        if(chkDone(r)===items.length&&nd>0){markDay();setTimeout(()=>{beep(784,.12);setTimeout(()=>beep(1047,.12),130);setTimeout(()=>beep(1568,.3),260)},90)}
+        draw();
+      });
+    }
   };
+  $("cEdit").onclick=()=>{editMode=!editMode;draw()};
+  $("cReset").onclick=()=>{store.set("cfg_"+r.id,{});draw()};
+  $("cStats").onclick=()=>openStats(r);
   draw();show("check");
+}
+function openStats(r){
+  statR=r;const checks=ROUTINES.filter(x=>x.type==="check");
+  $("sBack").onclick=()=>openCheck(statR);
+  $("sRoutines").innerHTML=checks.map(x=>`<button class="pill ${x===statR?"on":""}" data-id="${x.id}">${x.emoji} ${x.title}</button>`).join("");
+  $("sRoutines").querySelectorAll("[data-id]").forEach(b=>b.onclick=()=>openStats(ROUTINES.find(x=>x.id===b.dataset.id)));
+  $("sRange").querySelectorAll("button").forEach(b=>{b.classList.toggle("on",+b.dataset.v===statRange);b.onclick=()=>{statRange=+b.dataset.v;openStats(statR)}});
+  const L=store.get("log",{}),days=[];
+  for(let k=statRange-1;k>=0;k--){const d=new Date();d.setDate(d.getDate()-k);days.push({key:dkey(d),lbl:`${d.getMonth()+1}/${d.getDate()}`})}
+  const items=cfgOf(statR);
+  let active=0;
+  const done=days.map(dy=>{const e=(L[dy.key]||{})[statR.id];if(!e)return {...dy,val:null};
+    let f=0,tot=0;items.forEach(it=>{const x=e[it.name];const s=x?x.s:it.sets;tot+=s;f+=x?Math.min(x.d,s):0});
+    const v=tot?Math.round(f/tot*100):0;if(v>0)active++;return {...dy,val:v,tip:`${dy.lbl} · ${v}% 완료`}});
+  $("sMeta").textContent=`최근 ${statRange}일 중 ${active}일 운동`;
+  $("chDone").innerHTML=barChart(done,100,v=>v+"%");
+  $("chItems").innerHTML=items.map((it,i)=>{
+    const data=days.map(dy=>{const x=((L[dy.key]||{})[statR.id]||{})[it.name];if(!x||!x.d)return {...dy,val:null};const tot=x.d*x.v;return {...dy,val:tot,tip:`${dy.lbl} · 총 ${tot}${x.u||it.unit} (${x.v}${x.u||it.unit} × ${x.d}세트)`}});
+    const mx=Math.max(it.v*it.sets,...data.map(d=>d.val||0));
+    const has=data.some(d=>d.val);
+    return `<div class="card"><div class="ctitle">${it.name}</div><div class="csub">하루 총 ${it.unit==="초"?"시간(초)":"횟수"}</div><div class="chart">${has?barChart(data,mx,v=>v+it.unit):`<div class="empty">아직 기록이 없어요</div>`}</div></div>`}).join("");
+  bindTips();show("stats");
+}
+function nice(m){const p=Math.pow(10,Math.floor(Math.log10(m||1)));for(const k of [1,2,2.5,5,10])if(k*p>=m)return k*p;return 10*p}
+function barChart(data,max,fmt){
+  const W=340,H=120,l=30,r=6,t=8,b=18,iw=W-l-r,ih=H-t-b,n=data.length,top=nice(max),bw=Math.max(2,Math.min(16,iw/n-2));
+  let g="";[0,.5,1].forEach(f=>{const y=t+ih-ih*f;g+=`<line class="grid" x1="${l}" x2="${W-r}" y1="${y}" y2="${y}"/><text x="${l-4}" y="${y+3}" text-anchor="end">${fmt(Math.round(top*f))}</text>`});
+  const step=Math.ceil(n/7);
+  data.forEach((d,i)=>{const cx=l+iw*(i+.5)/n;
+    if((n-1-i)%step===0)g+=`<text x="${cx}" y="${H-4}" text-anchor="middle">${d.lbl}</text>`;
+    if(d.val){const h=Math.max(2,ih*d.val/top),y=t+ih-h,rr=Math.min(4,bw/2,h);
+      g+=`<path class="bar" d="M${cx-bw/2},${t+ih}V${y+rr}Q${cx-bw/2},${y} ${cx-bw/2+rr},${y}H${cx+bw/2-rr}Q${cx+bw/2},${y} ${cx+bw/2},${y+rr}V${t+ih}Z"/>`}
+    g+=`<rect x="${l+iw*i/n}" y="${t}" width="${iw/n}" height="${ih}" fill="transparent" data-tip="${d.tip||d.lbl+" · 기록 없음"}"/>`});
+  return `<svg viewBox="0 0 ${W} ${H}" role="img">${g}</svg>`;
+}
+function bindTips(){
+  const tip=$("tip");
+  $("stats").querySelectorAll("[data-tip]").forEach(el=>{
+    const showT=e=>{const p=e.touches?e.touches[0]:e;tip.textContent=el.dataset.tip;tip.style.left=Math.min(window.innerWidth-60,Math.max(60,p.clientX))+"px";tip.style.top=p.clientY+"px";tip.classList.remove("hidden");
+      $("stats").querySelectorAll(".bar.sel").forEach(x=>x.classList.remove("sel"));const bar=el.previousElementSibling;if(bar&&bar.classList.contains("bar"))bar.classList.add("sel")};
+    el.addEventListener("pointerenter",showT);el.addEventListener("pointerdown",showT);
+    el.addEventListener("pointerleave",()=>tip.classList.add("hidden"));
+  });
+  document.addEventListener("scroll",()=>tip.classList.add("hidden"),{passive:true});
 }
 
 /* ===== 가이드 ===== */
