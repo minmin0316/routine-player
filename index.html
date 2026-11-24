@@ -112,6 +112,24 @@ h2{font-size:20px;font-weight:700;letter-spacing:-.3px}
 .chart text{fill:var(--sub);font-size:9px;font-family:inherit}
 .tip{position:fixed;z-index:9;background:var(--ink);color:var(--bg);font-size:12px;padding:6px 9px;border-radius:8px;pointer-events:none;transform:translate(-50%,-110%);white-space:nowrap}
 .empty{font-size:13px;color:var(--sub);padding:18px 0;text-align:center}
+.presets{display:flex;gap:10px;overflow-x:auto;padding:2px 2px 10px;margin:0 -2px;scroll-snap-type:x mandatory}
+.preset{flex:none;width:220px;text-align:left;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;scroll-snap-align:start}
+.citem.sel{}
+.citem .pk{display:flex;align-items:center;gap:14px;flex:1;text-align:left;min-width:0}
+.citem.sel .sname{text-decoration:none;color:var(--ink)}
+.citem.sel .box{font-size:14px}
+.info{width:34px;height:34px;border-radius:50%;color:var(--sub);font-size:18px;flex:none}
+div.citem{display:flex;align-items:center}
+.gobar{position:sticky;bottom:0;padding:12px 0 6px;background:linear-gradient(transparent,var(--bg) 30%)}
+.big:disabled{opacity:.45}
+.adj{display:flex;justify-content:center;gap:8px;margin:6px 0 2px;min-height:36px}
+.tipsbox summary{font-weight:700;cursor:pointer}
+.tipsec{margin-top:10px;font-size:14px;line-height:1.6}
+.tipsec ul{padding-left:18px;margin-top:2px}
+.tipsec.warnc b{color:var(--warn)}
+#sheet{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:20;display:flex;align-items:flex-end;justify-content:center}
+#sheet.hidden{display:none}
+.sheetbox{background:var(--card);width:100%;max-width:560px;border-radius:20px 20px 0 0;padding:18px 18px 28px;max-height:80vh;overflow:auto}
 /* done */
 .done{text-align:center;padding-top:60px}
 .done .e{font-size:64px}
@@ -175,7 +193,7 @@ h2{font-size:20px;font-weight:700;letter-spacing:-.3px}
   <div class="top"><button class="back" id="sBack">‹</button><div><h2>기록</h2><p class="sub" id="sMeta"></p></div></div>
   <div class="chips" id="sRoutines"></div>
   <div class="row" style="padding:2px 0 8px"><span class="sub">기간</span><div class="seg" id="sRange"><button data-v="14" class="on">2주</button><button data-v="30">30일</button><button data-v="90">90일</button></div></div>
-  <div class="card"><div class="ctitle">일별 완료율</div><div class="csub">그날 채운 세트 ÷ 전체 세트</div><div class="chart" id="chDone"></div></div>
+  <div class="card"><div class="ctitle" id="chDoneT">일별 완료율</div><div class="csub" id="chDoneS">그날 채운 세트 ÷ 전체 세트</div><div class="chart" id="chDone"></div></div>
   <div id="chItems"></div>
   <div class="tip hidden" id="tip"></div>
 </section>
@@ -203,6 +221,44 @@ h2{font-size:20px;font-weight:700;letter-spacing:-.3px}
   </div>
 </section>
 
+<!-- ABS PICK -->
+<section id="absPick" class="hidden">
+  <div class="top"><button class="back" data-go="home">‹</button><div><h2>복근 운동</h2><p class="sub">오늘 할 운동을 골라요. 누른 순서대로 진행돼요.</p></div></div>
+  <div class="cbar"><button class="pill" id="apStats">📈 기록 보기</button><button class="pill hidden" id="apClear">선택 비우기</button></div>
+  <div class="sec" style="margin-top:6px">추천 루틴 · 누르면 그대로 담겨요</div>
+  <div class="presets" id="apPresets"></div>
+  <div id="apSections"></div>
+  <div class="gobar"><button class="big" id="apGo" style="margin:0">운동을 골라 주세요</button></div>
+</section>
+
+<!-- ABS RUN -->
+<section id="absRun" class="hidden">
+  <div class="top" style="margin-bottom:8px"><button class="back" id="awBack" style="width:auto;padding:0 12px;border-radius:99px;font-size:13px">‹ 전체 순서</button><span class="sub" id="awProg"></span></div>
+  <span class="tag" id="awReg"></span>
+  <div class="ptitle" id="awName" style="margin-top:6px"></div>
+  <div class="pstep" id="awSet"></div>
+  <div class="ringwrap" style="width:min(56vw,220px)">
+    <svg viewBox="0 0 120 120"><circle class="ringbg" cx="60" cy="60" r="52"/><circle class="ringfg" id="awRing" cx="60" cy="60" r="52" stroke-dasharray="326.7" stroke-dashoffset="0"/></svg>
+    <div class="center"><div class="phase" id="awPh"></div><div class="bignum" id="awBig" style="font-size:52px"></div><div class="biglbl" id="awLbl"></div></div>
+  </div>
+  <div class="adj" id="awAdj"></div>
+  <button class="big" id="awMain"></button>
+  <div class="cbar" style="justify-content:center;margin-top:10px"><button class="pill" id="awMore">＋ 한 세트 더</button><button class="pill" id="awStop">이 운동 그만하기 →</button></div>
+  <div class="next" id="awNext"></div>
+  <details class="card tipsbox" style="margin-top:14px"><summary>자세 · 주의 · 팁</summary><div id="awTips"></div></details>
+</section>
+
+<!-- ABS LIST -->
+<section id="absList" class="hidden">
+  <div class="top"><button class="back" id="alBack" onclick="$('alResume').click()">‹</button><div><h2>이번 운동 순서</h2><p class="sub">누르면 그 운동으로 바로 넘어가요</p></div></div>
+  <div class="card" id="alItems"></div>
+  <button class="big" id="alResume">▶ 이어서 하기</button>
+  <button class="pill" id="alEnd" style="display:block;margin:12px auto 0">운동 끝내기</button>
+</section>
+
+<!-- TIP SHEET -->
+<div id="sheet" class="hidden"><div class="sheetbox"><div class="row" style="padding:0 0 6px"><div><h2 id="shTitle"></h2><p class="sub" id="shSub"></p></div><button class="back" id="shClose">✕</button></div><div id="shBody"></div></div></div>
+
 <!-- DONE -->
 <section id="doneSec" class="hidden">
   <div class="done">
@@ -214,6 +270,79 @@ h2{font-size:20px;font-weight:700;letter-spacing:-.3px}
 </section>
 
 <script>
+/* ===== 복근 운동 라이브러리 (팁은 여기만 고치면 됨) ===== */
+const ABS_REGIONS=[
+  {k:"상복부",d:"상체를 말아 올리는 동작"},
+  {k:"외복사근",d:"옆구리 · 비틀기 · 옆으로 버티기"},
+  {k:"하복부",d:"다리·골반을 끌어올리는 동작"},
+  {k:"코어",d:"허리가 꺾이지 않게 버티는 동작"}
+];
+const ABS=[
+  {id:"crunch",name:"크런치",reg:"상복부",mode:"reps",v:20,
+   pos:["무릎을 세우고 누워 손은 귀 옆 또는 가슴 위","갈비뼈를 골반 쪽으로 말아 <b>어깨뼈가 뜰 만큼만</b> 올라와요"],
+   warn:["손으로 머리를 당기면 목이 먼저 아파요","목·허리가 먼저 뻐근하면 복근 대신 보상 근육을 쓰는 중이에요","반동으로 튕겨 올라오지 않기"],
+   tip:["올라가며 숨을 내쉬기","턱과 가슴 사이에 주먹 하나 공간 유지","내려갈 땐 2초 정도 천천히"]},
+  {id:"toetouch",name:"토 터치 크런치",reg:"상복부",mode:"reps",v:15,
+   pos:["누워서 다리를 천장으로 곧게 세워요","팔을 뻗어 손끝이 발끝을 향하도록 상체를 말아 올려요"],
+   warn:["다리가 흔들리면 반동이 생겨요","다리를 곧게 펴기 힘들면 무릎을 살짝 굽혀도 돼요"],
+   tip:["범위는 짧아도 괜찮아요. 위에서 1초 멈추기","내쉬면서 올라가기"]},
+  {id:"twist",name:"러시안 트위스트",reg:"외복사근",mode:"reps",v:20,note:"좌·우 각 1회",
+   pos:["앉아서 상체를 뒤로 기울여 허벅지와 V자를 만들어요","초보는 뒤꿈치를 바닥에 대고, 익숙해지면 발을 들어요"],
+   warn:["팔만 좌우로 흔드는 건 운동이 아니에요","등이 둥글게 무너지면 상체를 덜 눕혀요","빠르게 휘두르지 않기"],
+   tip:["가슴과 어깨까지 같이 돌린다는 느낌","한쪽에서 1박자 멈췄다가 반대로"]},
+  {id:"bicycle",name:"바이시클 크런치",reg:"외복사근",mode:"reps",v:20,note:"좌·우 각 1회",
+   pos:["크런치 자세에서 다리를 들고, 한쪽 무릎을 당기며 반대쪽 팔꿈치 방향으로 몸통을 비틀어요","반대쪽 다리는 앞으로 쭉 뻗어요"],
+   warn:["빠르게 휘젓듯 하면 복근 긴장이 풀려요","허리가 뜨면 뻗는 다리를 더 높이 들어요"],
+   tip:["느리게, 비틀 때 1초 멈추기","팔꿈치가 아니라 어깨가 무릎 쪽으로 간다는 느낌"]},
+  {id:"side",name:"사이드 플랭크",reg:"외복사근",mode:"time",v:30,note:"한 쪽당",
+   pos:["옆으로 누워 팔꿈치를 어깨 바로 아래에 두고 골반을 들어요","머리-골반-발이 일직선"],
+   warn:["골반이 바닥 쪽으로 처지지 않기","몸이 앞뒤로 기울지 않게","어려우면 무릎을 대고 해도 돼요"],
+   tip:["아래쪽 옆구리를 천장으로 밀어 올리는 느낌","어깨를 귀 쪽으로 으쓱하지 않기"]},
+  {id:"copen",name:"코펜하겐 플랭크",reg:"외복사근",mode:"time",v:30,note:"한 쪽당",
+   pos:["의자나 침대 모서리에 <b>위쪽 다리</b>를 올리고 사이드 플랭크 자세","아래쪽 다리는 띄워요"],
+   warn:["난도가 높은 동작이에요. 처음엔 <b>무릎까지만</b> 올려 짧게 버티기","사타구니 안쪽이 찌릿하면 바로 중단"],
+   tip:["옆구리와 허벅지 안쪽을 같이 쓰는 동작","골반이 처지지 않을 때까지만 버티기"]},
+  {id:"legraise",name:"레그레이즈",reg:"하복부",mode:"reps",v:20,
+   pos:["누워서 손을 엉덩이 아래에 받치고, 다리를 모아 올렸다 내려요"],
+   warn:["다리를 내릴 때 <b>허리가 뜨면 거기서 멈추고</b> 범위를 줄이기","허리가 꺾인 채 계속하면 허리를 다쳐요","반동 없이"],
+   tip:["허리를 바닥에 붙일 수 있는 높이까지만 내리기","힘들면 무릎을 살짝 굽혀도 돼요","내리는 쪽을 천천히"]},
+  {id:"reverse",name:"리버스 크런치",reg:"하복부",mode:"reps",v:15,
+   pos:["누워서 무릎을 90도로 들고, 골반을 말아 엉덩이를 바닥에서 살짝 떼요"],
+   warn:["다리를 휘둘러 반동으로 올리지 않기","너무 높이 굴러 목에 무게가 실리지 않게"],
+   tip:["꼬리뼈를 배꼽 쪽으로 만다는 느낌","내려올 때 천천히"]},
+  {id:"flutter",name:"플러터 킥",reg:"하복부",mode:"time",v:30,
+   pos:["누워서 다리를 살짝 들고 위아래로 작게 번갈아 차요"],
+   warn:["허리가 뜨면 다리를 더 높이 들기","크게 휘두르지 않기"],
+   tip:["일정한 리듬으로 작게","손을 엉덩이 아래에 받쳐도 돼요"]},
+  {id:"plank",name:"플랭크",reg:"코어",mode:"time",v:60,
+   pos:["팔꿈치를 어깨 바로 아래에, 머리부터 발끝까지 일직선"],
+   warn:["허리가 처지거나 엉덩이가 솟으면 그때가 끝이에요. <b>시간보다 자세</b>","고개를 떨구지 않기"],
+   tip:["엉덩이를 조이고 갈비뼈를 아래로 내리기","숨을 참지 않고 짧게 계속 쉬기","버티기 힘들면 무릎을 대도 돼요"]},
+  {id:"deadbug",name:"데드버그",reg:"코어",mode:"time",v:30,note:"좌우 번갈아",
+   pos:["누워서 팔은 천장으로, 무릎은 90도로 들어요","반대쪽 팔과 다리를 천천히 뻗었다가 돌아와요"],
+   warn:["뻗을 때 <b>허리가 뜨면 덜 뻗기</b>","빠르게 하지 않기"],
+   tip:["허리를 바닥에 누른 채로 유지하는 게 핵심","내쉬면서 뻗기","레그레이즈에서 허리가 아프면 이걸로 먼저 기초 잡기"]},
+  {id:"birddog",name:"버드독",reg:"코어",mode:"reps",v:10,note:"한 쪽당",
+   pos:["네발기기 자세에서 반대쪽 팔과 다리를 뻗어 1~2초 멈춰요"],
+   warn:["다리를 너무 높이 들어 허리가 꺾이지 않게","골반이 옆으로 돌아가지 않게"],
+   tip:["등 위에 물컵을 올려 둔 느낌으로","뒤꿈치로 뒤쪽 벽을 민다는 느낌"]},
+  {id:"hollow",name:"할로우 바디",reg:"코어",mode:"time",v:30,
+   pos:["누워서 허리를 바닥에 붙이고, 어깨와 다리를 살짝 들어 <b>오목한 보트 모양</b>"],
+   warn:["허리가 뜨면 다리를 더 높이 들거나 무릎을 굽히기","숨 참지 않기"],
+   tip:["갈비뼈를 내리고 골반을 말아 넣기","쉬운 버전: 팔을 몸 옆에, 무릎 굽히기 → 익숙해지면 팔·다리를 길게"]},
+  {id:"abslide",name:"AB 슬라이드",reg:"코어",mode:"reps",v:10,
+   pos:["무릎을 꿇고 롤러를 어깨 아래에 둔 뒤, <b>배에 먼저 힘을 주고</b> 굴려 나가요"],
+   warn:["가장 흔한 실수는 허리가 처지는 것","엉덩이부터 내려가지 않게","팔로 당겨 오지 않기"],
+   tip:["처음엔 짧게 굴려도 돼요. 자세 유지가 거리보다 먼저","돌아올 땐 배로 끌어당긴다는 느낌"]}
+];
+const ABS_PRESETS=[
+  {name:"복근 루틴 1",desc:"내 루틴",items:[["deadbug",30,3],["plank",60,3],["side",30,3],["copen",30,3],["crunch",20,5],["legraise",20,3]]},
+  {name:"복근 루틴 2",desc:"내 루틴",items:[["crunch",10,2],["twist",10,3],["side",30,2],["legraise",10,4],["abslide",10,2],["birddog",10,2],["plank",30,2],["hollow",30,2]]},
+  {name:"허리 편한 입문",desc:"추천 · 허리 부담 적은 동작 위주",items:[["deadbug",30,2],["birddog",10,2],["crunch",15,2],["side",30,2],["plank",30,2]]},
+  {name:"전 부위 고르게",desc:"추천 · 부위별 1~2개씩",items:[["crunch",20,2],["bicycle",20,2],["reverse",15,2],["side",30,2],["hollow",30,2]]},
+  {name:"아랫배 + 코어",desc:"추천 · 다리 드는 동작 위주",items:[["reverse",15,2],["legraise",15,2],["flutter",30,2],["hollow",30,2],["plank",45,2]]}
+];
+
 /* ===== 루틴 데이터: 새 루틴은 여기에만 추가 ===== */
 const ROUTINES = [
   {
@@ -261,16 +390,9 @@ const ROUTINES = [
     ]
   },
   {
-    id:"abs1", cat:"운동 루틴", type:"check", emoji:"🔥", title:"복근 루틴 1",
-    sub:"데드버그 · 플랭크 · 사이드 · 코펜하겐 · 크런치 · 레그레이즈",
-    steps:[
-      {name:"데드버그", v:20, unit:"초", sets:3, note:"한 쪽당"},
-      {name:"플랭크", v:60, unit:"초", sets:3},
-      {name:"사이드 플랭크", v:30, unit:"초", sets:3},
-      {name:"코펜하겐 플랭크", v:30, unit:"초", sets:3},
-      {name:"크런치", v:20, unit:"회", sets:5},
-      {name:"레그레이즈", v:20, unit:"회", sets:3}
-    ]
+    id:"abs", cat:"운동 루틴", type:"abs", emoji:"🔥", title:"복근 운동",
+    sub:"상복부 · 외복사근 · 하복부 · 코어에서 골라서",
+    steps:ABS.map(e=>({name:e.name,v:e.v,unit:e.mode==="time"?"초":"회",sets:2}))
   },
   {
     id:"hair", cat:"가이드", type:"guide", emoji:"💇", title:"머리 손질",
@@ -287,7 +409,7 @@ let S={tick:store.get("tick",false),tempo:store.get("tempo",2),prep:store.get("p
 const $=id=>document.getElementById(id);
 const REST=4;
 
-function show(id){["home","detail","guide","check","stats","playerSec","doneSec"].forEach(s=>$(s).classList.toggle("hidden",s!==id));window.scrollTo(0,0)}
+function show(id){["home","detail","guide","check","stats","absPick","absRun","absList","playerSec","doneSec"].forEach(s=>$(s).classList.toggle("hidden",s!==id));window.scrollTo(0,0)}
 document.querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>{show(b.dataset.go);renderHome()});
 
 function segInit(id,key){const el=$(id);el.querySelectorAll("button").forEach(b=>{b.classList.toggle("on",+b.dataset.v===S[key]);b.onclick=()=>{S[key]=+b.dataset.v;store.set(key,S[key]);el.querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b))}})}
@@ -313,9 +435,9 @@ function renderHome(){
   const hd=document.createElement("div");hd.className="sec";hd.textContent=c+(c==="운동 루틴"?" · 오늘 할 것 골라서 체크":"");$("rlist").appendChild(hd);
   ROUTINES.filter(r=>(r.cat||"기타")===c).forEach(r=>{
     const b=document.createElement("button");b.className="card rcard";
-    const meta=r.type==="run"?`<span class="tag">따라하기</span><span class="tag g">약 ${fmt(totalSec(r))}</span>`:r.type==="check"?`<span class="tag">체크</span><span class="tag g">오늘 ${chkDone(r)} / ${r.steps.length}</span>`:`<span class="tag g">가이드</span>`;
+    const meta=r.type==="run"?`<span class="tag">따라하기</span><span class="tag g">약 ${fmt(totalSec(r))}</span>`:r.type==="check"?`<span class="tag">체크</span><span class="tag g">오늘 ${chkDone(r)} / ${r.steps.length}</span>`:r.type==="abs"?`<span class="tag">골라서 하기</span><span class="tag g">${absTodaySets()?`오늘 ${absTodaySets()}세트`:`${ABS.length}개 운동`}</span>`:`<span class="tag g">가이드</span>`;
     b.innerHTML=`<div class="emoji">${r.emoji}</div><div><div class="sname" style="font-size:16px">${r.title}</div><div class="smeta">${r.sub}</div><div style="margin-top:6px">${meta}</div></div>`;
-    b.onclick=()=>r.type==="run"?openDetail(r):r.type==="check"?openCheck(r):openGuide(r);
+    b.onclick=()=>r.type==="run"?openDetail(r):r.type==="check"?openCheck(r):r.type==="abs"?openAbs():openGuide(r);
     $("rlist").appendChild(b);
   });
   });
@@ -380,9 +502,10 @@ function openCheck(r){
   $("cStats").onclick=()=>openStats(r);
   draw();show("check");
 }
+function absTodaySets(){const e=(store.get("log",{})[dkey()]||{}).abs||{};return Object.values(e).reduce((a,x)=>a+(x.d||0),0)}
 function openStats(r){
-  statR=r;const checks=ROUTINES.filter(x=>x.type==="check");
-  $("sBack").onclick=()=>openCheck(statR);
+  statR=r;const checks=ROUTINES.filter(x=>x.type==="check"||x.type==="abs");const isAbs=statR.type==="abs";
+  $("sBack").onclick=()=>isAbs?openAbs():openCheck(statR);
   $("sRoutines").innerHTML=checks.map(x=>`<button class="pill ${x===statR?"on":""}" data-id="${x.id}">${x.emoji} ${x.title}</button>`).join("");
   $("sRoutines").querySelectorAll("[data-id]").forEach(b=>b.onclick=()=>openStats(ROUTINES.find(x=>x.id===b.dataset.id)));
   $("sRange").querySelectorAll("button").forEach(b=>{b.classList.toggle("on",+b.dataset.v===statRange);b.onclick=()=>{statRange=+b.dataset.v;openStats(statR)}});
@@ -392,20 +515,22 @@ function openStats(r){
   let active=0;
   const done=days.map(dy=>{const e=(L[dy.key]||{})[statR.id];if(!e)return {...dy,val:null};
     let f=0,tot=0;items.forEach(it=>{const x=e[it.name];const s=x?x.s:it.sets;tot+=s;f+=x?Math.min(x.d,s):0});
+    if(isAbs){const n=Object.values(e).reduce((a,x)=>a+(x.d||0),0);if(n>0)active++;return {...dy,val:n,tip:`${dy.lbl} · ${n}세트`}}
     const v=tot?Math.round(f/tot*100):0;if(v>0)active++;return {...dy,val:v,tip:`${dy.lbl} · ${v}% 완료`}});
   $("sMeta").textContent=`최근 ${statRange}일 중 ${active}일 운동`;
-  $("chDone").innerHTML=barChart(done,100,v=>v+"%");
+  $("chDoneT").textContent=isAbs?"일별 총 세트":"일별 완료율";$("chDoneS").textContent=isAbs?"그날 끝낸 세트 수":"그날 채운 세트 ÷ 전체 세트";
+  $("chDone").innerHTML=isAbs?barChart(done,Math.max(4,...done.map(d=>d.val||0)),v=>v+""):barChart(done,100,v=>v+"%");
   $("chItems").innerHTML=items.map((it,i)=>{
     const data=days.map(dy=>{const x=((L[dy.key]||{})[statR.id]||{})[it.name];if(!x||!x.d)return {...dy,val:null};const tot=x.d*x.v;return {...dy,val:tot,tip:`${dy.lbl} · 총 ${tot}${x.u||it.unit} (${x.v}${x.u||it.unit} × ${x.d}세트)`}});
     const mx=Math.max(it.v*it.sets,...data.map(d=>d.val||0));
-    const has=data.some(d=>d.val);
+    const has=data.some(d=>d.val);if(isAbs&&!has)return "";
     return `<div class="card"><div class="ctitle">${it.name}</div><div class="csub">하루 총 ${it.unit==="초"?"시간(초)":"횟수"}</div><div class="chart">${has?barChart(data,mx,v=>v+it.unit):`<div class="empty">아직 기록이 없어요</div>`}</div></div>`}).join("");
   bindTips();show("stats");
 }
 function nice(m){const p=Math.pow(10,Math.floor(Math.log10(m||1)));for(const k of [1,2,2.5,5,10])if(k*p>=m)return k*p;return 10*p}
 function barChart(data,max,fmt){
   const W=340,H=120,l=30,r=6,t=8,b=18,iw=W-l-r,ih=H-t-b,n=data.length,top=nice(max),bw=Math.max(2,Math.min(16,iw/n-2));
-  let g="";[0,.5,1].forEach(f=>{const y=t+ih-ih*f;g+=`<line class="grid" x1="${l}" x2="${W-r}" y1="${y}" y2="${y}"/><text x="${l-4}" y="${y+3}" text-anchor="end">${fmt(Math.round(top*f))}</text>`});
+  let g="";[0,.5,1].forEach(f=>{const y=t+ih-ih*f;g+=`<line class="grid" x1="${l}" x2="${W-r}" y1="${y}" y2="${y}"/><text x="${l-4}" y="${y+3}" text-anchor="end">${fmt(+(top*f).toFixed(top*f%1?1:0))}</text>`});
   const step=Math.ceil(n/7);
   data.forEach((d,i)=>{const cx=l+iw*(i+.5)/n;
     if((n-1-i)%step===0)g+=`<text x="${cx}" y="${H-4}" text-anchor="middle">${d.lbl}</text>`;
@@ -423,6 +548,117 @@ function bindTips(){
     el.addEventListener("pointerleave",()=>tip.classList.add("hidden"));
   });
   document.addEventListener("scroll",()=>tip.classList.add("hidden"),{passive:true});
+}
+
+/* ===== 복근 운동: 고르기 ===== */
+const ABS_REST=30;
+const absEx=id=>ABS.find(e=>e.id===id);
+function absV(id){const m=store.get("absv",{});return m[id]||absEx(id).v}
+function absSetV(id,v){const m=store.get("absv",{});m[id]=v;store.set("absv",m)}
+function clampV(ex,v){return ex.mode==="time"?Math.max(30,v):Math.max(1,v)}
+function vTxt(ex,v){return ex.mode==="time"?`${v}초`:`${v}회`}
+let pick=[];
+function estMin(list){return Math.max(1,Math.round(list.reduce((a,p)=>{const ex=absEx(p.id),one=ex.mode==="time"?p.v*(ex.note==="한 쪽당"?2:1):p.v*3*(ex.note==="한 쪽당"?2:1);return a+p.sets*(one+ABS_REST)},0)/60))}
+function openAbs(){
+  const draw=()=>{
+    $("apPresets").innerHTML=ABS_PRESETS.map((p,i)=>`<button class="preset" data-p="${i}"><div class="sname">${p.name}</div><div class="cmeta">${p.desc}</div><div class="cmeta" style="margin-top:6px">${p.items.map(x=>absEx(x[0]).name).join(" · ")}</div><div class="cmeta"><b>약 ${estMin(p.items.map(x=>({id:x[0],v:x[1],sets:x[2]})))}분</b></div></button>`).join("");
+    $("apPresets").querySelectorAll("[data-p]").forEach(b=>b.onclick=()=>{const p=ABS_PRESETS[+b.dataset.p];pick=p.items.map(([id,v,s])=>({id,v:clampV(absEx(id),v),sets:s}));draw();$("apSections").scrollIntoView({behavior:"smooth"})});
+    $("apSections").innerHTML=ABS_REGIONS.map(r=>`<div class="sec">${r.k} <span style="font-weight:400">· ${r.d}</span></div><div class="card">`+ABS.filter(e=>e.reg===r.k).map(e=>{
+      const k=pick.findIndex(p=>p.id===e.id),p=pick[k];
+      return `<div class="citem ${k>=0?"on sel":""}"><button class="pk" data-id="${e.id}"><span class="box">${k>=0?k+1:""}</span><span class="cinfo"><span class="sname">${e.name}</span><div class="cmeta">${p?`${vTxt(e,p.v)} × ${p.sets}세트`:vTxt(e,absV(e.id))}${e.note?` · ${e.note}`:""}</div></span></button><button class="info" data-tip="${e.id}">ⓘ</button></div>`}).join("")+`</div>`).join("");
+    $("apSections").querySelectorAll(".pk").forEach(b=>b.onclick=()=>{const id=b.dataset.id,k=pick.findIndex(p=>p.id===id);if(k>=0)pick.splice(k,1);else pick.push({id,v:absV(id),sets:2});draw()});
+    $("apSections").querySelectorAll("[data-tip]").forEach(b=>b.onclick=()=>showTips(b.dataset.tip));
+    $("apGo").disabled=!pick.length;
+    $("apGo").textContent=pick.length?`▶ ${pick.length}개 운동 시작 · 약 ${estMin(pick)}분`:"운동을 골라 주세요";
+    $("apClear").classList.toggle("hidden",!pick.length);
+  };
+  $("apClear").onclick=()=>{pick=[];draw()};
+  $("apGo").onclick=()=>{if(pick.length)startAbs()};
+  $("apStats").onclick=()=>openStats(ROUTINES.find(r=>r.type==="abs"));
+  draw();show("absPick");
+}
+function tipHTML(ex){return `<div class="tipsec"><b>자세</b><ul>${ex.pos.map(x=>`<li>${x}</li>`).join("")}</ul></div><div class="tipsec warnc"><b>주의</b><ul>${ex.warn.map(x=>`<li>${x}</li>`).join("")}</ul></div><div class="tipsec"><b>신경 쓰면 좋은 점</b><ul>${ex.tip.map(x=>`<li>${x}</li>`).join("")}</ul></div>`}
+function showTips(id){const ex=absEx(id);$("shTitle").textContent=ex.name;$("shSub").textContent=`${ex.reg}${ex.note?" · "+ex.note:""}`;$("shBody").innerHTML=tipHTML(ex);$("sheet").classList.remove("hidden")}
+$("shClose").onclick=()=>$("sheet").classList.add("hidden");
+$("sheet").onclick=e=>{if(e.target.id==="sheet")$("sheet").classList.add("hidden")};
+
+/* ===== 복근 운동: 진행 ===== */
+let AW=null;
+function startAbs(){
+  try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();actx.resume()}catch(e){}
+  lockOn();
+  AW={list:pick.map(p=>({...p,done:0,stopped:false})),i:0,phase:"ready",el:0,dur:0,last:performance.now(),start:Date.now(),tick:null};
+  AW.tick=setInterval(awTick,100);
+  awRender();show("absRun");
+}
+function awCur(){return AW.list[AW.i]}
+function awNextIdx(){for(let k=AW.i+1;k<AW.list.length;k++)if(!AW.list[k].stopped&&AW.list[k].done<AW.list[k].sets)return k;for(let k=0;k<AW.i;k++)if(!AW.list[k].stopped&&AW.list[k].done<AW.list[k].sets)return k;return -1}
+function awLog(it){const ex=absEx(it.id),L=store.get("log",{}),k=dkey();L[k]=L[k]||{};L[k].abs=L[k].abs||{};const prev=L[k].abs[ex.name]||{d:0};L[k].abs[ex.name]={d:prev.d+1,v:it.v,s:prev.d+1,u:ex.mode==="time"?"초":"회"};store.set("log",L)}
+function awSetDone(){
+  const it=awCur();it.done++;awLog(it);endTone();
+  if(it.done>=it.sets&&awNextIdx()<0){awFinish();return}
+  AW.phase="rest";AW.el=0;AW.dur=ABS_REST;awRender();
+}
+function awAfterRest(){
+  const it=awCur();
+  if(it.done>=it.sets||it.stopped){const n=awNextIdx();if(n<0){awFinish();return}AW.i=n}
+  AW.phase="ready";AW.el=0;beep(988,.08);setTimeout(()=>beep(988,.08),140);awRender();
+}
+function awTick(){
+  if(!AW)return;const now=performance.now(),dt=(now-AW.last)/1000;AW.last=now;
+  if(AW.paused)return;
+  if(AW.phase==="count"){AW.el+=dt;if(AW.el>=3){AW.phase="run";AW.el=0;AW.dur=awCur().v;AW.side=1;startTone()}awDraw();return}
+  if(AW.phase==="switch"){AW.el+=dt;if(AW.el>=5){AW.phase="run";AW.el=0;AW.dur=awCur().v;AW.side=2;startTone()}awDraw();return}
+  if(AW.phase==="run"&&absEx(awCur().id).mode==="time"){AW.el+=dt;if(AW.el>=AW.dur){if(absEx(awCur().id).note==="한 쪽당"&&AW.side===1){AW.phase="switch";AW.el=0;endTone();awRender();return}awSetDone();return}awDraw();return}
+  if(AW.phase==="rest"){AW.el+=dt;if(AW.el>=AW.dur){awAfterRest();return}awDraw()}
+}
+function awRender(){
+  const it=awCur(),ex=absEx(it.id),n=AW.list.length;
+  $("awProg").textContent=`${AW.i+1} / ${n} 운동`;
+  $("awReg").textContent=ex.reg;$("awName").textContent=ex.name;
+  $("awSet").textContent=`세트 ${Math.min(it.done+(AW.phase==="rest"?0:1),it.sets)} / ${it.sets}${ex.note?" · "+ex.note:""}`;
+  $("awTips").innerHTML=tipHTML(ex);
+  const adj=ex.mode==="time"?[-10,-5,5,10]:[-5,-1,1,5];
+  $("awAdj").innerHTML=AW.phase==="rest"?"":adj.map(d=>`<button class="pill" data-d="${d}">${d>0?"+":"−"}${Math.abs(d)}${ex.mode==="time"?"초":""}</button>`).join("");
+  $("awAdj").querySelectorAll("[data-d]").forEach(b=>b.onclick=()=>{const nv=clampV(ex,it.v+(+b.dataset.d));it.v=nv;absSetV(it.id,nv);if(AW.phase==="run"&&ex.mode==="time")AW.dur=nv;awRender()});
+  const nx=awNextIdx(),nxIt=nx>=0?AW.list[nx]:null;
+  $("awNext").textContent=AW.phase==="rest"?(it.done<it.sets&&!it.stopped?`다음: ${ex.name} ${it.done+1}세트`:nxIt?`다음: ${absEx(nxIt.id).name}`:""):(nxIt&&nx!==AW.i?`다음 운동: ${absEx(nxIt.id).name}`:"마지막 운동");
+  awDraw();
+}
+function awDraw(){
+  const it=awCur(),ex=absEx(it.id),ring=$("awRing");let ph="",big="",lbl="",prog=0,btn="",cls="";
+  if(AW.phase==="ready"){ph="준비";big=vTxt(ex,it.v);lbl=ex.mode==="time"?"누르면 3초 뒤 시작":"자세 잡고 시작";btn=ex.mode==="time"?"▶ 세트 시작":"▶ 시작";cls="prep"}
+  else if(AW.phase==="switch"){ph="반대쪽으로";big=Math.ceil(5-AW.el);lbl="자세 바꾸기";prog=AW.el/5;btn="";cls="prep"}
+  else if(AW.phase==="count"){ph="곧 시작";big=Math.ceil(3-AW.el);lbl="";prog=AW.el/3;btn="";cls="prep"}
+  else if(AW.phase==="run"){ph=`${it.done+1}세트${ex.mode==="time"&&ex.note==="한 쪽당"?(AW.side===2?" · 반대쪽":" · 첫 번째 쪽"):""}`;if(ex.mode==="time"){big=Math.ceil(AW.dur-AW.el);lbl="초";prog=AW.el/AW.dur;btn="✓ 일찍 끝내기"}else{big=it.v;lbl="회 하고 누르기";prog=1;btn="✓ 세트 완료"}cls="work"}
+  else{ph="휴식";big=Math.ceil(AW.dur-AW.el);lbl="초";prog=AW.el/AW.dur;btn="건너뛰기 →";cls="rest"}
+  $("awPh").textContent=ph;$("awPh").className="phase "+cls;$("awBig").textContent=big;$("awLbl").textContent=lbl;
+  ring.setAttribute("class","ringfg "+(cls==="work"?"":cls));ring.style.strokeDashoffset=326.7*Math.min(1,prog);
+  $("awMain").textContent=btn;$("awMain").classList.toggle("hidden",!btn);
+  $("awMore").classList.toggle("hidden",AW.phase==="count"||AW.phase==="switch");$("awStop").classList.toggle("hidden",AW.phase==="count"||AW.phase==="switch");
+}
+$("awMain").onclick=()=>{if(!AW)return;const ex=absEx(awCur().id);
+  if(AW.phase==="ready"){if(ex.mode==="time"){AW.phase="count";AW.el=0;beep(660,.06)}else{AW.phase="run";startTone()}awRender()}
+  else if(AW.phase==="run"){if(ex.mode==="time"&&ex.note==="한 쪽당"&&AW.side===1){AW.phase="switch";AW.el=0;endTone();awRender()}else awSetDone()}
+  else if(AW.phase==="rest"){awAfterRest()}};
+$("awMore").onclick=()=>{if(!AW)return;awCur().sets++;awCur().stopped=false;beep(1175,.06);awRender()};
+$("awStop").onclick=()=>{if(!AW)return;const it=awCur();it.stopped=true;const n=awNextIdx();if(n<0){awFinish();return}AW.i=n;AW.phase="ready";AW.el=0;awRender()};
+$("awBack").onclick=()=>{if(!AW)return;AW.paused=true;awList()};
+function awList(){
+  $("alItems").innerHTML=AW.list.map((it,k)=>{const ex=absEx(it.id),st=k===AW.i?"진행 중":it.stopped?"그만함":it.done>=it.sets?"완료":"대기";
+    return `<button class="citem ${it.done>=it.sets||it.stopped?"on":""}" data-k="${k}"><span class="box">${it.done>=it.sets?"✓":k+1}</span><span class="cinfo"><span class="sname">${ex.name}</span><div class="cmeta">${vTxt(ex,it.v)} · ${it.done} / ${it.sets}세트</div></span><span class="tag ${k===AW.i?"":"g"}">${st}</span></button>`}).join("");
+  $("alItems").querySelectorAll("[data-k]").forEach(b=>b.onclick=()=>{const k=+b.dataset.k,it=AW.list[k];AW.i=k;it.stopped=false;if(it.done>=it.sets)it.sets=it.done+1;AW.phase="ready";AW.el=0;AW.paused=false;AW.last=performance.now();awRender();show("absRun")});
+  show("absList");
+}
+$("alResume").onclick=()=>{if(!AW)return;AW.paused=false;AW.last=performance.now();awRender();show("absRun")};
+$("alEnd").onclick=()=>awFinish();
+function awFinish(){
+  if(!AW)return;clearInterval(AW.tick);
+  const sets=AW.list.reduce((a,x)=>a+x.done,0),mins=fmt((Date.now()-AW.start)/1000);AW=null;
+  try{wake&&wake.release()}catch(e){}
+  if(sets>0)markDay();
+  setTimeout(()=>{beep(784,.15);setTimeout(()=>beep(1047,.15),160);setTimeout(()=>beep(1568,.4),320)},500);
+  $("doneMsg").textContent=`복근 운동 · ${sets}세트 · ${mins}`;show("doneSec");
 }
 
 /* ===== 가이드 ===== */
