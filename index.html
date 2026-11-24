@@ -7,7 +7,11 @@
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#2f6f5e">
 <link rel="icon" href="icon-192.png">
-<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="루틴">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
 <style>
@@ -143,6 +147,14 @@ div.citem{display:flex;align-items:center}
 .acc.open .accb{grid-template-rows:1fr}
 .accb>div{overflow:hidden}
 .accb p{padding:0 0 14px 38px;font-size:14px;line-height:1.7;color:var(--ink)}
+/* 설치 · 기록 옮기기 */
+.btncol{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.btncol .pill{text-align:left;padding:12px 14px;border-radius:12px;font-size:14px}
+.btncol .pill.main{background:var(--acc);color:#fff;border-color:var(--acc);font-weight:700}
+.btncol textarea{width:100%;min-height:90px;padding:10px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:12px/1.4 ui-monospace,monospace;resize:vertical}
+.chk{display:flex;gap:8px;align-items:flex-start;font-size:13px;color:var(--sub);line-height:1.5}
+.msg{font-size:13px;line-height:1.6;padding:10px 12px;border-radius:12px;background:var(--acc2);color:var(--ink)}
+.msg.err{background:#f6e3da;color:#7a2e10}
 </style>
 </head>
 <body>
@@ -161,6 +173,16 @@ div.citem{display:flex;align-items:center}
       <div class="seg" id="tempo"><button data-v="1.5">1.5초</button><button data-v="2" class="on">2초</button><button data-v="3">3초</button></div></div>
     <div class="row"><span>동작 전 준비 시간</span>
       <div class="seg" id="prep"><button data-v="3">3초</button><button data-v="5" class="on">5초</button><button data-v="8">8초</button></div></div>
+  </div>
+  <div id="installBox" class="hidden">
+    <div class="sec">앱으로 설치</div>
+    <div class="card"><div class="sub" id="installTxt" style="line-height:1.6;color:var(--ink)"></div>
+      <div class="btncol"><button class="pill main hidden" id="installBtn">📲 홈 화면에 설치</button><button class="pill" id="installHide">닫기 · 다시 안 보기</button></div></div>
+  </div>
+  <div class="sec">기기 간 기록 옮기기</div>
+  <div class="card">
+    <p class="sub" id="syncInfo" style="line-height:1.6"></p>
+    <div class="btncol"><button class="pill" id="exBtn">📤 이 기기 기록 보내기</button><button class="pill" id="imBtn">📥 다른 기기 기록 합치기</button></div>
   </div>
 </section>
 
@@ -441,6 +463,7 @@ function renderHome(){
     $("rlist").appendChild(b);
   });
   });
+  renderSync();
 }
 
 /* ===== 상세 ===== */
@@ -716,7 +739,7 @@ $("startBtn").onclick=()=>{
   try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();actx.resume()}catch(e){}
   say("시작할게요",true);lockOn();
   const {steps,ph}=buildPhases(cur);
-  P={r:cur,steps,ph,i:0,el:0,last:performance.now(),running:true,spoken:{},start:Date.now(),hold:!!cur.video,holdT:performance.now()};
+  P={r:cur,steps,ph,i:0,el:0,last:performance.now(),running:true,spoken:{},start:Date.now(),hold:!!cur.video&&navigator.onLine,holdT:performance.now()};
   $("prog").innerHTML=steps.map(()=>"<i></i>").join("");
   show("playerSec");enterPhase();loop();
 };
@@ -766,7 +789,7 @@ function prev(){
 function finish(){
   const r=P.r,mins=fmt((Date.now()-P.start)/1000);P=null;pauseClip();
   try{wake&&wake.release()}catch(e){}
-  const h=store.get("hist",[]),d=new Date().toDateString();if(!h.includes(d)){h.push(d);store.set("hist",h.slice(-60))}
+  markDay();
   setTimeout(()=>{beep(784,.15);setTimeout(()=>beep(1047,.15),160);setTimeout(()=>beep(1568,.4),320)},700);
   $("doneMsg").textContent=`${r.title} · ${mins}`;show("doneSec");
 }
@@ -776,7 +799,7 @@ function renderPlayer(full){
     $("pStep").textContent=`${p.si+1} / ${P.steps.length}`;
     $("pTitle").textContent=st.name;
     $("pCue").innerHTML=st.cue+(st.caution?`<div class="caution">${st.caution}</div>`:"");
-    const hasV=!!(st.video||P.r.video)&&st.t!=null;
+    const hasV=!!(st.video||P.r.video)&&st.t!=null&&navigator.onLine;
     $("vbox").classList.toggle("hidden",!hasV);$("pVid").classList.toggle("hidden",!hasV);
     if(hasV){$("pVid").href=`https://youtu.be/${st.video||P.r.video}?t=${st.t}`;playClip(st.video||P.r.video,st.t,st.end||st.t+20)}else pauseClip();
     const ns=P.steps[p.si+1];$("pNext").textContent=ns?`다음: ${ns.name}`:"마지막 동작";
@@ -803,6 +826,104 @@ $("bPrev").onclick=()=>P&&prev();
 $("pVid").addEventListener("click",()=>{if(P&&P.running){P.running=false;pauseClip();renderPlayer(false)}});
 $("quit").onclick=()=>{P=null;pauseClip();try{wake&&wake.release()}catch(e){};show("home");renderHome()};
 
+/* ===== 앱 설치 (PWA) ===== */
+const meta={get(k,d){try{const v=localStorage.getItem("rpmeta_"+k);return v===null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem("rpmeta_"+k,JSON.stringify(v))}catch(e){}}};
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const isStandalone=()=>matchMedia("(display-mode: standalone)").matches||navigator.standalone===true;
+const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
+const devName=isIOS?(/iPhone/.test(navigator.userAgent)?"아이폰":"아이패드"):/Android/.test(navigator.userAgent)?"안드로이드":"PC";
+if("serviceWorker" in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
+try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist().catch(()=>{})}catch(e){}
+let deferredInstall=null;
+function renderInstall(){
+  const box=$("installBox");
+  if(isStandalone()||meta.get("installHide",false)){box.classList.add("hidden");return}
+  let t;
+  if(deferredInstall)t="홈 화면에 설치하면 주소창 없이 앱처럼 열리고, 인터넷이 없어도 타이머·체크·기록이 돼요.";
+  else if(isIOS)t="<b>Safari</b> 위쪽의 <b>공유 버튼(□↑) → 홈 화면에 추가</b>를 누르세요.<br><span class='sub'>설치한 앱은 Safari와 기록이 따로 저장돼요. 설치 후 Safari에서 ‘기록 보내기’ → 앱에서 ‘기록 합치기’로 옮겨 주세요.</span>";
+  else t="브라우저 메뉴(⋮ 또는 ≡)에서 <b>앱 설치</b> 또는 <b>홈 화면에 추가</b>를 누르세요.";
+  $("installTxt").innerHTML=t;$("installBtn").classList.toggle("hidden",!deferredInstall);box.classList.remove("hidden");
+}
+window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();deferredInstall=e;renderInstall()});
+window.addEventListener("appinstalled",()=>{deferredInstall=null;$("installBox").classList.add("hidden")});
+$("installBtn").onclick=async()=>{if(!deferredInstall)return;deferredInstall.prompt();try{await deferredInstall.userChoice}catch(e){}deferredInstall=null;renderInstall()};
+$("installHide").onclick=()=>{meta.set("installHide",true);renderInstall()};
+
+/* ===== 기기 간 기록 옮기기: 보내기 · 합치기 ===== */
+function dumpAll(){const o={};for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith("rp_")){try{o[k.slice(3)]=JSON.parse(localStorage.getItem(k))}catch(e){}}}return o}
+function mergeData(local,inc,takeSettings){
+  const out={...local},L=JSON.parse(JSON.stringify(local.log||{})),I=inc.log||{};let added=0,merged=0;
+  for(const day in I){
+    if(!I[day]||typeof I[day]!=="object")continue;
+    if(!L[day]){L[day]=I[day];added++;continue}
+    let ch=false;
+    for(const rid in I[day]){const a=L[day][rid]=L[day][rid]||{};
+      for(const ex in I[day][rid]){const x=I[day][rid][ex],y=a[ex];if(x&&(!y||(x.d||0)>(y.d||0))){a[ex]=x;ch=true}}}
+    if(ch)merged++;
+  }
+  out.log=L;
+  out.hist=[...new Set([...(local.hist||[]),...(inc.hist||[])])].sort((a,b)=>(new Date(a)-new Date(b))||0).slice(-400);
+  for(const k in inc){if(k==="log"||k==="hist")continue;if(takeSettings||!(k in local))out[k]=inc[k]}
+  return {out,added,merged};
+}
+function ago(iso){if(!iso)return "";const d=Math.floor((Date.now()-new Date(iso))/864e5);return d<=0?"오늘":d===1?"어제":d+"일 전"}
+function renderSync(){
+  const ex=meta.get("lastExport",null),im=meta.get("lastImport",null),days=Object.keys(store.get("log",{})).length;
+  let t=`이 기기(${devName})에 ${days}일치 기록 · `+(ex?`마지막으로 보낸 때 ${ago(ex)}`:"아직 보낸 적 없음");
+  if(im)t+=` · 합친 때 ${ago(im.at)}${im.from?` (${esc(im.from)})`:""}`;
+  if(days&&(!ex||Date.now()-new Date(ex)>14*864e5))t+=`<br><b style="color:var(--warn)">브라우저 데이터를 지우면 기록도 지워져요. 가끔 ‘보내기’로 백업해 두세요.</b>`;
+  $("syncInfo").innerHTML=t;
+}
+function sheet(title,sub,html){$("shTitle").textContent=title;$("shSub").textContent=sub;$("shBody").innerHTML=html;$("sheet").classList.remove("hidden")}
+function openExport(){
+  const json=JSON.stringify({app:"routine-player",ver:1,at:new Date().toISOString(),from:devName,data:dumpAll()}),kb=Math.max(1,Math.round(json.length/1024));
+  const file=new File([json],`루틴기록-${dkey()}-${devName}.txt`,{type:"text/plain"});
+  let canFile=false;try{canFile=!!(navigator.canShare&&navigator.canShare({files:[file]}))}catch(e){}
+  sheet("기록 보내기",`${devName} · ${kb}KB`,`<p class="sub" style="line-height:1.6">다른 기기에서 ‘기록 합치기’로 넣으면 두 기기 기록이 하나로 합쳐져요. 같은 걸 여러 번 넣어도 중복되지 않아요.</p>
+  <div class="btncol">
+    <button class="pill main" id="exFile">${canFile?"📤 파일로 공유 (카톡 나에게 · 드라이브 · AirDrop)":"💾 파일로 저장"}</button>
+    <button class="pill" id="exCopy">📋 코드 복사</button>
+    <div id="exMsg"></div></div>`);
+  const done=m=>{meta.set("lastExport",new Date().toISOString());renderSync();$("exMsg").innerHTML=`<div class="msg">${m}</div>`};
+  $("exFile").onclick=async()=>{
+    if(canFile){try{await navigator.share({files:[file],title:"루틴 플레이어 기록"});done("보냈어요. 다른 기기에서 이 파일을 받아 ‘기록 합치기 → 받은 파일 고르기’를 하세요.")}catch(e){if(e.name!=="AbortError")$("exMsg").innerHTML=`<div class="msg err">공유가 안 됐어요. ‘코드 복사’를 써 주세요.</div>`}return}
+    const a=document.createElement("a");a.href=URL.createObjectURL(file);a.download=file.name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1500);done("파일로 저장했어요.");
+  };
+  $("exCopy").onclick=async()=>{
+    try{await navigator.clipboard.writeText(json);done("복사했어요. 카톡 ‘나와의 채팅’ 같은 곳에 붙여넣고, 다른 기기에서 그 글을 복사해 ‘기록 합치기’ 칸에 붙여넣으세요.")}
+    catch(e){$("exMsg").innerHTML=`<textarea readonly>${esc(json)}</textarea><div class="msg">자동 복사가 안 됐어요. 위 칸을 길게 눌러 전체 선택 → 복사해 주세요.</div>`;const ta=$("exMsg").querySelector("textarea");ta.focus();ta.select()}
+  };
+}
+function parseImport(txt){
+  let o;try{o=JSON.parse(String(txt).trim())}catch(e){throw new Error("기록 코드 형식이 아니에요. 처음부터 끝까지 빠짐없이 복사했는지 확인해 주세요.")}
+  if(o&&o.app==="routine-player"&&o.data&&typeof o.data==="object")return o;
+  throw new Error("루틴 플레이어 기록이 아니에요.");
+}
+function openImport(){
+  sheet("기록 합치기","다른 기기에서 보낸 파일이나 코드",`<div class="btncol">
+    <button class="pill main" id="imFileBtn">📁 받은 파일 고르기</button><input type="file" id="imFile" accept=".txt,.json,text/plain,application/json" class="hidden">
+    <textarea id="imText" placeholder="또는 복사한 코드를 여기에 붙여넣기"></textarea>
+    <button class="pill" id="imTextBtn">붙여넣은 코드로 합치기</button>
+    <label class="chk"><input type="checkbox" id="imSet"><span>설정도 그 기기 것으로 맞추기<br>(편집한 횟수·시간, 복근 운동 시간, 템포 등. 끄면 이 기기에 없는 설정만 채워요)</span></label>
+    <div id="imMsg"></div></div>`);
+  const run=txt=>{
+    try{
+      const o=parseImport(txt),{out,added,merged}=mergeData(dumpAll(),o.data,$("imSet").checked);
+      for(const k in out)store.set(k,out[k]);
+      S={tick:store.get("tick",false),tempo:store.get("tempo",2),prep:store.get("prep",5),opt:store.get("opt",{})};
+      segInit("tempo","tempo");segInit("prep","prep");$("tTick").classList.toggle("on",S.tick);
+      meta.set("lastImport",{at:new Date().toISOString(),from:o.from||""});
+      renderHome();
+      $("imMsg").innerHTML=`<div class="msg">합쳤어요 ✓${o.from?` ${esc(o.from)}에서 ${ago(o.at)} 보낸 기록`:""}<br>새로 들어온 날 ${added}일 · 내용이 보태진 날 ${merged}일</div>`;
+    }catch(e){$("imMsg").innerHTML=`<div class="msg err">${esc(e.message)}</div>`}
+  };
+  $("imFileBtn").onclick=()=>$("imFile").click();
+  $("imFile").onchange=async()=>{const f=$("imFile").files[0];if(f)run(await f.text())};
+  $("imTextBtn").onclick=()=>run($("imText").value);
+}
+$("exBtn").onclick=openExport;$("imBtn").onclick=openImport;
+
+renderInstall();
 renderHome();
 </script>
 </body>
