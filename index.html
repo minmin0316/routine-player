@@ -82,6 +82,15 @@ h2{font-size:20px;font-weight:700;letter-spacing:-.3px}
 .cb{width:56px;height:56px;border-radius:50%;background:var(--card);border:1px solid var(--line);font-size:20px;display:grid;place-items:center}
 .cb.main{width:76px;height:76px;background:var(--acc);color:#fff;border:0;font-size:28px}
 .note{font-size:12px;color:var(--sub);text-align:center;margin-top:12px;line-height:1.5}
+/* check */
+.citem{display:flex;align-items:center;gap:14px;width:100%;text-align:left;padding:14px 0;border-top:1px solid var(--line)}
+.citem:first-child{border-top:0}
+.box{width:28px;height:28px;border-radius:8px;border:2px solid var(--line);display:grid;place-items:center;flex:none;transition:.15s;color:#fff;font-weight:900}
+.citem.on .box{background:var(--acc);border-color:var(--acc)}
+.citem .sname{transition:.15s}
+.citem.on .sname{color:var(--sub);text-decoration:line-through}
+.amt{margin-left:auto;font-size:14px;font-weight:700;color:var(--acc)}
+.citem.on .amt{color:var(--sub)}
 /* done */
 .done{text-align:center;padding-top:60px}
 .done .e{font-size:64px}
@@ -131,12 +140,18 @@ h2{font-size:20px;font-weight:700;letter-spacing:-.3px}
   <div class="card" id="gSteps"></div>
 </section>
 
+<!-- CHECK -->
+<section id="check" class="hidden">
+  <div class="top"><button class="back" data-go="home">‹</button><div><h2 id="cTitle"></h2><p class="sub" id="cMeta"></p></div></div>
+  <div class="card" id="cItems"></div>
+</section>
+
 <!-- PLAYER -->
 <section id="playerSec" class="hidden">
   <div class="top" style="margin-bottom:10px"><button class="back" id="quit">✕</button><span class="sub" id="pTotal"></span></div>
   <div id="player">
     <div class="prog" id="prog"></div>
-    <div class="vbox"><div id="yt"></div></div>
+    <div class="vbox" id="vbox"><div id="yt"></div></div>
     <div class="pstep" id="pStep"></div>
     <div class="ptitle" id="pTitle"></div>
     <div class="cue" id="pCue"></div>
@@ -201,6 +216,17 @@ const ROUTINES = [
     ]
   },
   {
+    id:"body", type:"check", emoji:"💪", title:"맨몸 근력",
+    sub:"했으면 체크 · 매일 자정에 초기화",
+    steps:[
+      {name:"푸쉬업", amt:"60개"},
+      {name:"스쿼트", amt:"60개"},
+      {name:"런지", amt:"60개"},
+      {name:"슈퍼맨", amt:"60개"},
+      {name:"플랭크", amt:"60초"}
+    ]
+  },
+  {
     id:"hair", type:"guide", emoji:"💇", title:"머리 손질",
     sub:"누르면 단계별 설명이 펼쳐져요",
     steps:[
@@ -215,7 +241,7 @@ let S={tick:store.get("tick",false),tempo:store.get("tempo",2),prep:store.get("p
 const $=id=>document.getElementById(id);
 const REST=4;
 
-function show(id){["home","detail","guide","playerSec","doneSec"].forEach(s=>$(s).classList.toggle("hidden",s!==id));window.scrollTo(0,0)}
+function show(id){["home","detail","guide","check","playerSec","doneSec"].forEach(s=>$(s).classList.toggle("hidden",s!==id));window.scrollTo(0,0)}
 document.querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>{show(b.dataset.go);renderHome()});
 
 function segInit(id,key){const el=$(id);el.querySelectorAll("button").forEach(b=>{b.classList.toggle("on",+b.dataset.v===S[key]);b.onclick=()=>{S[key]=+b.dataset.v;store.set(key,S[key]);el.querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b))}})}
@@ -227,7 +253,8 @@ function fmt(s){s=Math.round(s);const m=Math.floor(s/60),r=s%60;return m?`${m}�
 function stepMeta(st){const base=st.mode==="reps"?`${st.reps}회`:fmt(st.sec);if(st.labels)return `${st.labels.join(" · ")} 각 ${base}`;return st.sets>1?`${base} × ${st.sets}세트`:base}
 function enabled(r){return r.steps.filter(st=>!st.optional||S.opt[r.id+":"+st.group])}
 function workSec(st){return st.mode==="reps"?st.reps*S.tempo:st.sec}
-function totalSec(r){return enabled(r).reduce((a,st)=>a+S.prep+workSec(st)*st.sets+REST*(st.sets-1),0)}
+function prepSec(r,si){return si>0&&r.rest?r.rest:S.prep}
+function totalSec(r){return enabled(r).reduce((a,st,si)=>a+prepSec(r,si)+workSec(st)*st.sets+REST*(st.sets-1),0)}
 
 /* ===== 홈 ===== */
 function renderHome(){
@@ -237,9 +264,9 @@ function renderHome(){
   $("rlist").innerHTML="";
   ROUTINES.forEach(r=>{
     const b=document.createElement("button");b.className="card rcard";
-    const meta=r.type==="run"?`<span class="tag">따라하기</span><span class="tag g">약 ${fmt(totalSec(r))}</span>`:`<span class="tag g">가이드</span>`;
+    const meta=r.type==="run"?`<span class="tag">따라하기</span><span class="tag g">약 ${fmt(totalSec(r))}</span>`:r.type==="check"?`<span class="tag">체크</span><span class="tag g">오늘 ${chkDone(r)} / ${r.steps.length}</span>`:`<span class="tag g">가이드</span>`;
     b.innerHTML=`<div class="emoji">${r.emoji}</div><div><div class="sname" style="font-size:16px">${r.title}</div><div class="smeta">${r.sub}</div><div style="margin-top:6px">${meta}</div></div>`;
-    b.onclick=()=>r.type==="run"?openDetail(r):openGuide(r);
+    b.onclick=()=>r.type==="run"?openDetail(r):r.type==="check"?openCheck(r):openGuide(r);
     $("rlist").appendChild(b);
   });
 }
@@ -261,6 +288,28 @@ function openDetail(r){
   draw();show("detail");
 }
 
+/* ===== 체크리스트 ===== */
+function chkKey(r){return "chk_"+r.id+"_"+new Date().toDateString()}
+function chkGet(r){return store.get(chkKey(r),[])}
+function chkDone(r){return chkGet(r).length}
+function markDay(){const h=store.get("hist",[]),d=new Date().toDateString();if(!h.includes(d)){h.push(d);store.set("hist",h.slice(-60))}}
+function openCheck(r){
+  $("cTitle").textContent=r.title;
+  const draw=()=>{
+    const on=chkGet(r);
+    $("cMeta").textContent=on.length===r.steps.length?"오늘 다 했어요 ✓":`오늘 ${on.length} / ${r.steps.length}`;
+    $("cItems").innerHTML=r.steps.map((st,i)=>`<button class="citem ${on.includes(i)?"on":""}" data-i="${i}"><span class="box">${on.includes(i)?"✓":""}</span><span class="sname">${st.name}</span><span class="amt">${st.amt||""}</span></button>`).join("");
+    $("cItems").querySelectorAll(".citem").forEach(b=>b.onclick=()=>{
+      const i=+b.dataset.i,cur=chkGet(r),k=cur.indexOf(i);
+      if(k<0){cur.push(i);beep(1175,.07)}else cur.splice(k,1);
+      store.set(chkKey(r),cur);
+      if(cur.length===r.steps.length){markDay();try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();actx.resume()}catch(e){}setTimeout(()=>{beep(784,.12);setTimeout(()=>beep(1047,.12),130);setTimeout(()=>beep(1568,.3),260)},80)}
+      draw();
+    });
+  };
+  draw();show("check");
+}
+
 /* ===== 가이드 ===== */
 function openGuide(r){
   $("gTitle").textContent=r.title;$("gMeta").textContent=`${r.steps.length}단계`;
@@ -274,7 +323,7 @@ let actx=null;
 function say(){}
 function startTone(){beep(880,.1);setTimeout(()=>beep(1175,.14),150)}
 function endTone(){beep(1319,.18);setTimeout(()=>beep(988,.18),170);setTimeout(()=>beep(784,.35),340)}
-function beep(f=880,d=.12){try{if(!actx)return;const o=actx.createOscillator(),g=actx.createGain();o.frequency.value=f;o.connect(g);g.connect(actx.destination);g.gain.setValueAtTime(.18,actx.currentTime);g.gain.exponentialRampToValueAtTime(.001,actx.currentTime+d);o.start();o.stop(actx.currentTime+d)}catch(e){}}
+function beep(f=880,d=.12){try{if(!actx){actx=new (window.AudioContext||window.webkitAudioContext)()}actx.resume();const o=actx.createOscillator(),g=actx.createGain();o.frequency.value=f;o.connect(g);g.connect(actx.destination);g.gain.setValueAtTime(.18,actx.currentTime);g.gain.exponentialRampToValueAtTime(.001,actx.currentTime+d);o.start();o.stop(actx.currentTime+d)}catch(e){}}
 const KN=["","하나","둘","셋","넷","다섯","여섯","일곱","여덟","아홉","열","열하나","열둘","열셋","열넷","열다섯","열여섯","열일곱","열여덟","열아홉","스물"];
 let wake=null;async function lockOn(){try{if("wakeLock" in navigator)wake=await navigator.wakeLock.request("screen")}catch(e){wake=null}}
 document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"&&P&&P.running)lockOn()});
@@ -304,7 +353,7 @@ let P=null;
 function buildPhases(r){
   const steps=enabled(r),ph=[];
   steps.forEach((st,si)=>{
-    ph.push({si,kind:"prep",dur:S.prep,set:0});
+    ph.push({si,kind:"prep",dur:prepSec(r,si),set:0});
     for(let k=1;k<=st.sets;k++){
       ph.push({si,kind:"work",dur:workSec(st),set:k});
       if(k<st.sets)ph.push({si,kind:"rest",dur:REST,set:k});
@@ -316,7 +365,7 @@ $("startBtn").onclick=()=>{
   try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();actx.resume()}catch(e){}
   say("시작할게요",true);lockOn();
   const {steps,ph}=buildPhases(cur);
-  P={r:cur,steps,ph,i:0,el:0,last:performance.now(),running:true,spoken:{},start:Date.now(),hold:true,holdT:performance.now()};
+  P={r:cur,steps,ph,i:0,el:0,last:performance.now(),running:true,spoken:{},start:Date.now(),hold:!!cur.video,holdT:performance.now()};
   $("prog").innerHTML=steps.map(()=>"<i></i>").join("");
   show("playerSec");enterPhase();loop();
 };
@@ -376,8 +425,9 @@ function renderPlayer(full){
     $("pStep").textContent=`${p.si+1} / ${P.steps.length}`;
     $("pTitle").textContent=st.name;
     $("pCue").innerHTML=st.cue+(st.caution?`<div class="caution">${st.caution}</div>`:"");
-    $("pVid").href=`https://youtu.be/${P.r.video}?t=${st.t}`;
-    playClip(st.video||P.r.video,st.t,st.end||st.t+20);
+    const hasV=!!(st.video||P.r.video)&&st.t!=null;
+    $("vbox").classList.toggle("hidden",!hasV);$("pVid").classList.toggle("hidden",!hasV);
+    if(hasV){$("pVid").href=`https://youtu.be/${st.video||P.r.video}?t=${st.t}`;playClip(st.video||P.r.video,st.t,st.end||st.t+20)}else pauseClip();
     const ns=P.steps[p.si+1];$("pNext").textContent=ns?`다음: ${ns.name}`:"마지막 동작";
     const ph=$("pPhase");ph.className="phase "+p.kind;
     $("ring").setAttribute("class","ringfg "+p.kind);
@@ -386,7 +436,7 @@ function renderPlayer(full){
   }
   const setName=st.labels?st.labels[p.set-1]:(st.sets>1?`${p.set} / ${st.sets} 세트`:"");
   let big,lbl,ph;
-  if(p.kind==="prep"){ph="준비";big=Math.ceil(left);lbl="손 위치 잡기"}
+  if(p.kind==="prep"){const rs=p.si>0&&P.r.rest;ph=rs?"쉬는 시간":"준비";big=Math.ceil(left);lbl=rs?`다음: ${st.name}`:(P.r.prepLabel||"손 위치 잡기")}
   else if(p.kind==="rest"){ph="휴식";big=Math.ceil(left);lbl=st.labels?`다음: ${st.labels[p.set]}`:`${p.set+1}세트 준비`}
   else if(st.mode==="reps"){ph=setName||"진행";big=Math.min(st.reps,Math.floor(P.el/S.tempo)+1);lbl=`/ ${st.reps}회`}
   else{ph=setName||"진행";big=Math.ceil(left);lbl="초"}
